@@ -2,10 +2,10 @@
 """policy_walk — the Go2's REAL locomotion in Webots: the firmware `free_walk` MNN policy
 (extracted from the robot OS) drives the 12 leg joints with torque control under full physics.
 
-This is a straight port of the verified walk core from `ai-robot/sim/controllers/go2_rl/go2_rl.py`
+This is a straight port of our verified reference walk core
 ("0.5 m/s command walks ~0.45 m/s, upright, 9+ m stable"), with ONE structural change: the original
 read base angular velocity / gravity via the Supervisor API; here they come from the robot's own
-Gyro + InertialUnit devices, so the participant robot stays `supervisor FALSE` (it cannot cheat).
+Gyro + InertialUnit devices, so the participant robot runs with `supervisor FALSE` (no privileged world access).
 
 Control law (identical to the source):
   * physics tick (basicTimeStep, 4 ms): tau = clip(kp*(target − q) − kd*qd, ±tau_lim) → setTorque
@@ -41,7 +41,7 @@ CROUCH = np.array([0.0, 1.15, -2.10] * 4, float)
 class _MNNPolicy:
     def __init__(self, path):
         self.it = MNN.Interpreter(path)
-        # single thread → bit-deterministic inference (fair judging)
+        # single thread → bit-deterministic inference (reproducible runs)
         self.sess = self.it.createSession({"numThread": 1})
         self.inp = self.it.getSessionInput(self.sess)
         self.n_in = int(np.prod(self.inp.getShape()))

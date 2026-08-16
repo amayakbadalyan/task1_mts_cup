@@ -137,10 +137,9 @@ class Referee:
                 + sum(t["points"] for t in self.man_tasks if t["done"]))
 
     def _final(self, reason):
-        # ANTI-SWEEP: a manipulation task is credited ONLY if its object is in its zone at the FINAL
-        # resting state — momentary passes while the ball is held/swept do NOT count. This makes the
-        # score reflect where each object is actually LEFT (one object → one slot), not what it
-        # brushed past. Combined with shuffled ball↔slot colours, a blind sweep can't farm points.
+        # Задача засчитывается, только если объект в СВОЕЙ зоне в КОНЕЧНОМ состоянии покоя —
+        # мгновенные проносы, пока объект в захвате, не считаются. Балл отражает, где объект
+        # реально оставлен (один объект → один слот).
         for task in self.man_tasks:
             node = self._man_nodes.get(task["object_def"])
             if node is not None:
@@ -228,11 +227,10 @@ class Referee:
                 self._final("timeout")
                 return
 
-            # manipulation: an object counts ONLY when it comes to REST in its zone; the POINTS
-            # are scored from the FINAL resting position (see _final). A ball merely SWEPT through a
-            # zone while held never settles here, so the old "carry the held ball over every slot"
-            # exploit earns nothing. This block only tracks a SETTLED placement (stationary in-zone
-            # for SETTLE_S) to open the shortcut door — the real credit is the end-state check.
+            # объект засчитывается, только когда окончательно останавливается в своей зоне; балл —
+            # от конечной позиции покоя (см. _final). Здесь отслеживается только устоявшаяся
+            # установка (неподвижность в зоне SETTLE_S), чтобы открыть дверь короткого пути; реальный
+            # зачёт — по конечному состоянию.
             if self.man_tasks:
                 for task in self.man_tasks:
                     node = self._man_nodes.get(task["object_def"])

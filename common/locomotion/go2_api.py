@@ -9,7 +9,7 @@ legs walk; balance is handled for you) — you write navigation/perception, NOT 
     bot = Go2()
     while bot.step():
         x, y, yaw = bot.pose()          # localization (GPS + IMU)
-        ranges = bot.lidar()            # 2D scan for obstacles
+        ranges = bot.lidar()            # 3D LiDAR scan for obstacles
         bot.drive(vx=0.4, vyaw=0.0)     # walk forward 0.4 m/s
 
 Sensors:  pose() → (x, y, yaw) · lidar() → list of ranges · image() → front camera bytes
@@ -45,7 +45,7 @@ class RemoteArm:
     z up, axes aligned with the station. Reach ≈ 0.55 m around the pedestal.
 
         robot.arm.move(x, y, z)      send the gripper to a point (top-grasp, tip points down)
-        robot.arm.at_target() -> bool  arrived at the last move() target (±1.5 cm)
+        robot.arm.at_target() -> bool  arrived at the last move() target (±5 cm)
         robot.arm.tip() -> (x,y,z)     current gripper position
         robot.arm.grab() / release()   electromagnet on / off (latches objects ≤ 9 cm away)
         robot.arm.holding() -> bool    an object is latched right now
@@ -140,7 +140,7 @@ class RemoteArm:
 
 
 class Go2:
-    # command caps (m/s, rad/s). The firmware policy is verified stable at ≤0.7 m/s; strafe
+    # command caps (m/s, rad/s). Reliable cruise ~0.4–0.5 m/s (0.8 is a hard cap, not a stability guarantee); strafe
     # (vy) is supported too — see drive().
     MAX_VX = 0.8
     MAX_VY = 0.4
@@ -152,7 +152,7 @@ class Go2:
         self.dt = self.ts / 1000.0
 
         # REAL locomotion: the Go2's own firmware walk policy (MNN) torque-drives the 12 leg
-        # joints under full physics — the same verified stack as ai-robot/sim (go2_rl).
+        # joints under full physics — the same verified locomotion stack used across our reference sims.
         self._walk = PolicyWalk(self.robot)
 
         # remote client of the stationary manipulator station (levels 2-3; ok=False elsewhere)
