@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "common", "locomotion"))
 from go2_api import Go2
 
-def analyze_lidar(lidar, k, r=0.6, n=6):
+def analyze_lidar(lidar, k, r=0.45, n=6):
     """
     lidar: list из 24 слоёв, каждый слой — list из 360 float-расстояний.
     k: порог количества точек.
@@ -79,12 +79,6 @@ def analyze_lidar(lidar, k, r=0.6, n=6):
         "best_count": best_count,
         "sector_counts": sector_counts,
     }
-
-
-TARGET = np.array([147, 243, 255])   # R=147, G=243, B=255
-TOL = 30                              # допуск на канал
-MIN_AREA = 50                         # минимальная площадь группы
-
 
 def get_x_offset(rgb, target_rgb, tol=30, min_area=50):
     '''
@@ -150,16 +144,19 @@ def get_x_offset(rgb, target_rgb, tol=30, min_area=50):
     bx = (minx + maxx) // 2
     return (bx - img_cx) * 2    
 
-
-BASE_SPEED = 0.35 # Скорость чтобы не упасть
+TARGET = np.array([147, 243, 255])    # R=147, G=243, B=255
+FINISH = np.array([253, 188, 243])    # R=253, G=188, B=243
+TOL = 30                              # допуск на канал
+MIN_AREA = 50                         # минимальная площадь группы
+BASE_SPEED = 0.5                      # Скорость чтобы не упасть
 PI = math.pi
-TIME_SEARCH = 3 # Время поиска
-got_target = 0 #Найденные цели
+TIME_SEARCH = 1.8                     # Время поиска
 
 def main():
     robot = Go2()
     i = 0
     time = -1
+    got_target = 0                    # Найденные цели
     while robot.step():
         scan = robot.lidar()
         lidar_frame = [scan[i:i+360] for i in range(0, len(scan), 360)]
@@ -174,33 +171,34 @@ def main():
         i += 1
         if i % 10 == 0:
             founded_obst = analyze_lidar(lidar_frame, 0)
-            print(founded_obst)
+            #print(founded_obst)
+            #print(got_target)
             if founded_obst['triggered']:
                 dangle = founded_obst['best_sector'] * PI / 4 + PI / 8 + PI
             else:
                 dangle = 0
+
         dspeed_x = BASE_SPEED * math.cos(dangle)
         dspeed_y = BASE_SPEED * math.sin(dangle)
-
-        if i % 1000 == 0:
-            #print(scan)
-            pass
-        
+      
         arr = np.frombuffer(robot.image(), np.uint8).reshape(240, 320, 4)
         rgb = arr[..., :3].copy()
 
         #with open(r"C:\Users\amaya\OneDrive\Desktop\frame.bin", "wb") as f:
         #    f.write(robot.image())
-
         dx = get_x_offset(rgb, TARGET)
+        if dx is None:
+            dx = get_x_offset(rgb, FINISH)
 
         #print(dangle, dspeed_y, dspeed_x)
         if dx is not None:
             robot.drive(vx=dspeed_x, vy=dspeed_y, vyaw=0.0 - 1.2 * dx / 320)
             time = -1
+            
         else:
             if time < 0:
                 time = timestamp
+                got_target += 1
             if timestamp < time + TIME_SEARCH:
                 robot.drive(vx=dspeed_x, vy=dspeed_y, vyaw=0.0)
             else:
